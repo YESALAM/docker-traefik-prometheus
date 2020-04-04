@@ -102,11 +102,12 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.external-url=http://docker.localhost/prometheus/'
     networks:
       - inbound
     deploy:
       labels:
-       - "traefik.http.routers.prometheus.rule=Host(`prometheus.localhost`)"
+       - "traefik.http.routers.prometheus.rule=Host(`docker.localhost`) && PathPrefix(`/prometheus/`)"
        - "traefik.http.routers.prometheus.service=prometheus"
        - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
        - "traefik.docker.network=inbound"
