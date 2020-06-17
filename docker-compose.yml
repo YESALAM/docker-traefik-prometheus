@@ -49,19 +49,26 @@ services:
       - '--path.sysfs=/host/sys'
       - --collector.filesystem.ignored-mount-points
       - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
-    ports:
-      - 9100:9100
+    # ports:
+    #   - 9100:9100
     networks:
       - inbound
     deploy:
+      labels:
+        - "traefik.http.middlewares.exporterremover.stripPrefix.prefixes=/exporter"
+        - "traefik.http.routers.exporter.middlewares=exporterremover"
+        - "traefik.http.routers.exporter.rule=Host(`docker.localhost`) && PathPrefix(`/exporter/`)"
+        - "traefik.http.routers.exporter.service=exporter"
+        - "traefik.http.services.exporter.loadbalancer.server.port=9100"
+        - "traefik.docker.network=inbound"
       mode: global
       restart_policy:
         condition: on-failure
 
   alertmanager:
     image: prom/alertmanager
-    ports:
-      - 9093:9093
+    # ports:
+    #   - 9093:9093
     volumes:
       - "./alertmanager/:/etc/alertmanager/"
     networks:
@@ -69,7 +76,13 @@ services:
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
+      - '--web.external-url=http://docker.localhost/alertmanager/'
     deploy:
+      labels:
+      - "traefik.http.routers.alertmanager.rule=Host(`docker.localhost`) && PathPrefix(`/alertmanager/`)"
+      - "traefik.http.routers.alertmanager.service=alertmanager"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
+      - "traefik.docker.network=inbound"
       placement:
         constraints:
             - node.role==manager
@@ -131,9 +144,9 @@ services:
     user: "104"
     deploy:
       labels:
-        - "traefik.http.middlewares.middleware00.stripPrefix.prefixes=/grafana"
+        - "traefik.http.middlewares.grafanaremover.stripPrefix.prefixes=/grafana"
         - "traefik.http.routers.grafana.rule=Host(`docker.localhost`) && PathPrefix(`/grafana`)"
-        - "traefik.http.routers.grafana.middlewares=middleware00"
+        - "traefik.http.routers.grafana.middlewares=grafanaremover"
         - "traefik.http.routers.grafana.service=grafana"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
         - "traefik.docker.network=inbound"
@@ -147,9 +160,11 @@ networks:
   traefik:
     driver: overlay
     name: traefik
+    external: true
   inbound:
     driver: overlay
     name: inbound
+    external: true
 
 volumes:
     prometheus_data: {}

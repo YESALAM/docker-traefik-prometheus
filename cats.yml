@@ -12,7 +12,9 @@ services:
         parallelism: 1
         delay: 10s
       labels:
-        - "traefik.http.routers.cat-app.rule=Host(`cats.localhost`)"
+        - "traefik.http.middlewares.catsremover.stripPrefix.prefixes=/cats"
+        - "traefik.http.routers.cat-app.middlewares=catsremover"
+        - "traefik.http.routers.cat-app.rule=Host(`docker.localhost`) && PathPrefix(`/cats/`)"
         - "traefik.http.routers.cat-app.service=cat-app"
         - "traefik.http.services.cat-app.loadbalancer.server.port=5000"
         - "traefik.docker.network=inbound"
