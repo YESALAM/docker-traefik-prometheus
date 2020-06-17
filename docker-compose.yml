@@ -4,7 +4,7 @@ services:
   traefik:
     image: traefik:v2.2
     command:
-      - "--log.level=DEBUG"
+      - "--log.level=WARN"
       - "--api.insecure=true"
       - "--metrics.prometheus=true"
       - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
@@ -13,7 +13,7 @@ services:
       - "--providers.docker.watch"
     networks:
       - traefik
-      - inbound
+      # - inbound
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
@@ -49,40 +49,40 @@ services:
       - '--path.sysfs=/host/sys'
       - --collector.filesystem.ignored-mount-points
       - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
-    # ports:
-    #   - 9100:9100
+    ports:
+      - 9100:9100
     networks:
-      - inbound
+      - traefik
     deploy:
       labels:
         - "traefik.http.middlewares.exporterremover.stripPrefix.prefixes=/exporter"
         - "traefik.http.routers.exporter.middlewares=exporterremover"
-        - "traefik.http.routers.exporter.rule=Host(`docker.localhost`) && PathPrefix(`/exporter/`)"
+        - "traefik.http.routers.exporter.rule=Host(`test.glpapps.com`) && PathPrefix(`/exporter/`)"
         - "traefik.http.routers.exporter.service=exporter"
         - "traefik.http.services.exporter.loadbalancer.server.port=9100"
-        - "traefik.docker.network=inbound"
+        - "traefik.docker.network=traefik"
       mode: global
       restart_policy:
         condition: on-failure
 
   alertmanager:
     image: prom/alertmanager
-    # ports:
-    #   - 9093:9093
+    ports:
+      - 9093:9093
     volumes:
       - "./alertmanager/:/etc/alertmanager/"
     networks:
-      - inbound
+      - traefik
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
-      - '--web.external-url=http://docker.localhost/alertmanager/'
+      - '--web.external-url=http://test.glpapps.com/alertmanager/'
     deploy:
       labels:
-      - "traefik.http.routers.alertmanager.rule=Host(`docker.localhost`) && PathPrefix(`/alertmanager/`)"
+      - "traefik.http.routers.alertmanager.rule=Host(`test.glpapps.com`) && PathPrefix(`/alertmanager/`)"
       - "traefik.http.routers.alertmanager.service=alertmanager"
       - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
-      - "traefik.docker.network=inbound"
+      - "traefik.docker.network=traefik"
       placement:
         constraints:
             - node.role==manager
@@ -99,7 +99,7 @@ services:
     ports:
       - 8008:8080
     networks:
-      - inbound
+      - traefik
     deploy:
       mode: global
       restart_policy:
@@ -115,15 +115,15 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.external-url=http://docker.localhost/prometheus/'
+      - '--web.external-url=http://test.glpapps.com/prometheus/'
     networks:
-      - inbound
+      - traefik
     deploy:
       labels:
-       - "traefik.http.routers.prometheus.rule=Host(`docker.localhost`) && PathPrefix(`/prometheus/`)"
+       - "traefik.http.routers.prometheus.rule=Host(`test.glpapps.com`) && PathPrefix(`/prometheus/`)"
        - "traefik.http.routers.prometheus.service=prometheus"
        - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
-       - "traefik.docker.network=inbound"
+       - "traefik.docker.network=traefik"
       placement:
         constraints:
         - node.role==manager
@@ -140,16 +140,16 @@ services:
     env_file:
       - ./grafana/config.monitoring
     networks:
-      - inbound
+      - traefik
     user: "104"
     deploy:
       labels:
         - "traefik.http.middlewares.grafanaremover.stripPrefix.prefixes=/grafana"
-        - "traefik.http.routers.grafana.rule=Host(`docker.localhost`) && PathPrefix(`/grafana`)"
+        - "traefik.http.routers.grafana.rule=Host(`test.glpapps.com`) && PathPrefix(`/grafana`)"
         - "traefik.http.routers.grafana.middlewares=grafanaremover"
         - "traefik.http.routers.grafana.service=grafana"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-        - "traefik.docker.network=inbound"
+        - "traefik.docker.network=traefik"
       placement:
         constraints:
           - node.role == manager
@@ -161,10 +161,10 @@ networks:
     driver: overlay
     name: traefik
     external: true
-  inbound:
-    driver: overlay
-    name: inbound
-    external: true
+  # inbound:
+  #   driver: overlay
+  #   name: inbound
+  #   external: true
 
 volumes:
     prometheus_data: {}

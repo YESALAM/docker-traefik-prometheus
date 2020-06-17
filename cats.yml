@@ -4,7 +4,7 @@ services:
   cat-app:
     image: mikesir87/cats
     networks:
-      - inbound
+      - traefik
     deploy:
       mode: replicated
       replicas: 3
@@ -14,13 +14,14 @@ services:
       labels:
         - "traefik.http.middlewares.catsremover.stripPrefix.prefixes=/cats"
         - "traefik.http.routers.cat-app.middlewares=catsremover"
-        - "traefik.http.routers.cat-app.rule=Host(`docker.localhost`) && PathPrefix(`/cats/`)"
+        - "traefik.http.routers.cat-app.rule=Host(`test.glpapps.com`) && PathPrefix(`/cats/`)"
         - "traefik.http.routers.cat-app.service=cat-app"
         - "traefik.http.services.cat-app.loadbalancer.server.port=5000"
-        - "traefik.docker.network=inbound"
+        - "traefik.docker.network=traefik"
         # Remove the line below to enable rate limiting. This will only allow avergae 1 request per second before erroring.
       #  - "traefik.http.routers.cat-app.middlewares=cat-app@docker"
       #  - "traefik.http.middlewares.cat-app.ratelimit.average=1"
 networks:
-  inbound:
-   external: true
+  traefik:
+    name: traefik
+    external: true
